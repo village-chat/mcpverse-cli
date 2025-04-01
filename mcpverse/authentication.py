@@ -13,6 +13,9 @@ import requests
 
 AUTH_FILE = os.path.expanduser("~/.mcpverse/auth.json")
 
+MCPVERSE_API_URL = "https://api.mcpverse.dev"
+MCPVERSE_APP_URL = "https://mcpverse.dev"
+
 class AuthData:
     def __init__(self, access_token, refresh_token, id, email, first_name, last_name, display_name, locale):
         self.access_token = access_token
@@ -97,6 +100,12 @@ def get_current_user_email() -> str:
     return auth_data.email
 
 
+def get_access_token() -> str:
+    """Get the access token of the currently authenticated user."""
+    auth_data = get_auth_info()
+    return auth_data.access_token
+
+
 def remove_auth_info() -> bool:
     """Remove the authentication information."""
     try:
@@ -128,10 +137,9 @@ def browser_login() -> tuple[bool, str]:
             
             # Check state to prevent CSRF
             if 'state' not in params or params['state'][0] != state:
-                self.send_response(400)
-                self.send_header('Content-type', 'text/html')
+                self.send_response(302)
+                self.send_header('Location', f"{MCPVERSE_APP_URL}/auth/cli?error=true")
                 self.end_headers()
-                self.wfile.write(b"<html><body><h1>Authentication failed</h1><p>Invalid state parameter.</p></body></html>")
                 return False, "Invalid state parameter."
             
             # Exchange the code for tokens
@@ -142,7 +150,7 @@ def browser_login() -> tuple[bool, str]:
                 try:
                     # Exchange the code for tokens
                     response = requests.post(
-                        'http://localhost:5001/api/oauth/token',
+                        f"{MCPVERSE_API_URL}/api/oauth/token",
                         json={
                             'code': code,
                             'redirect_uri': redirect_uri
@@ -151,26 +159,21 @@ def browser_login() -> tuple[bool, str]:
                     response.raise_for_status()
                     token_data = response.json()
 
-                    click.echo(f"token_data: {token_data}")
-                    
                     # Assuming the response includes tokens and user info
                     auth_data = AuthData.from_token_data(token_data)
                     
-                    self.send_response(200)
-                    self.send_header('Content-type', 'text/html')
+                    self.send_response(302)
+                    self.send_header('Location', f"{MCPVERSE_APP_URL}/auth/cli?success=true")
                     self.end_headers()
-                    self.wfile.write(b"<html><body><h1>Authentication successful</h1><p>You can now close this window and return to the CLI.</p></body></html>")
                     callback_received.set()
                 except Exception as e:
-                    self.send_response(400)
-                    self.send_header('Content-type', 'text/html')
+                    self.send_response(302)
+                    self.send_header('Location', f"{MCPVERSE_APP_URL}/auth/cli?error=true")
                     self.end_headers()
-                    self.wfile.write(f"<html><body><h1>Authentication failed</h1><p>Error exchanging code for token: {str(e)}</p></body></html>".encode())
             else:
-                self.send_response(400)
-                self.send_header('Content-type', 'text/html')
+                self.send_response(302)
+                self.send_header('Location', f"{MCPVERSE_APP_URL}/auth/cli?error=true")
                 self.end_headers()
-                self.wfile.write(b"<html><body><h1>Authentication failed</h1><p>Missing authorization code.</p></body></html>")
         
         def log_message(self, format, *args):
             # Suppress logs
@@ -188,7 +191,7 @@ def browser_login() -> tuple[bool, str]:
         try:
             # Construct the auth URL with the state parameter and redirect URL
             redirect_uri = f"http://localhost:{port}"
-            auth_url = f"http://localhost:5173/auth/cli?state={state}&redirect_uri={urllib.parse.quote(redirect_uri)}"
+            auth_url = f"{MCPVERSE_APP_URL}/auth/cli?state={state}&redirect_uri={urllib.parse.quote(redirect_uri)}"
             
             # Open the browser to the auth URL
             webbrowser.open(auth_url)

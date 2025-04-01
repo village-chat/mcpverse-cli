@@ -1,5 +1,7 @@
 import click
+import asyncio
 from . import authentication
+from . import stdio_proxy
 
 @click.group()
 def cli():
@@ -10,7 +12,12 @@ def cli():
 @click.argument('url')
 def proxy(url):
     """Proxy URL command."""
-    click.echo(f"URL: {url}")
+    click.echo(f"Proxying to MCPverse server at {url}")
+    if not authentication.is_authenticated():
+        click.echo("Not logged in")
+        return
+    access_token = authentication.get_access_token()
+    asyncio.run(stdio_proxy.run_proxy_stdio_server(url, access_token))
 
 @cli.group()
 def auth():
