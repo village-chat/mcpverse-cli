@@ -12,7 +12,6 @@ def cli():
 @click.argument('url')
 def proxy(url):
     """Proxy URL command."""
-    click.echo(f"Proxying to MCPverse server at {url}")
     if not authentication.is_authenticated():
         click.echo("Not logged in")
         return
