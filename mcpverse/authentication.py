@@ -17,8 +17,9 @@ MCPVERSE_API_URL = "https://api.mcpverse.dev"
 MCPVERSE_APP_URL = "https://mcpverse.dev"
 
 class AuthData:
-    def __init__(self, access_token, refresh_token, id, email, first_name, last_name, display_name, locale):
+    def __init__(self, access_token, expires_at, refresh_token, id, email, first_name, last_name, display_name, locale):
         self.access_token = access_token
+        self.expires_at = expires_at
         self.refresh_token = refresh_token
         self.id = id
         self.email = email
@@ -30,6 +31,7 @@ class AuthData:
     def to_dict(self) -> dict:
         return {
             "access_token": self.access_token,
+            "expires_at": self.expires_at,
             "refresh_token": self.refresh_token,
             "id": self.id,
             "email": self.email,
@@ -43,6 +45,7 @@ class AuthData:
     def from_dict(data: dict) -> 'AuthData':
         return AuthData(
             data['access_token'],
+            data['expires_at'],
             data['refresh_token'],
             data['id'],
             data['email'],
@@ -56,6 +59,7 @@ class AuthData:
     def from_token_data(token_data: dict) -> 'AuthData':
         return AuthData(
             token_data['access_token'],
+            token_data['expires_at'],
             token_data['refresh_token'],
             token_data['user']['id'],
             token_data['user']['email'],
