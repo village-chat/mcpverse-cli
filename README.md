@@ -4,16 +4,10 @@ A command-line interface tool for MCP.
 
 ## Installation
 
-### Using pip
-
-```bash
-pip install mcpverse
-```
-
 ### Using Homebrew
 
 ```bash
-brew tap mcp/mcpverse
+brew tap village-chat/mcpverse
 brew install mcpverse
 ```
 
@@ -49,7 +43,7 @@ mcpv proxy <URL>
 
 ```bash
 # Clone the repository
-git clone https://github.com/mcp/mcpverse-cli.git
+git clone https://github.com/village-chat/mcpverse-cli.git
 cd mcpverse-cli
 
 # Install in development mode
