@@ -1,6 +1,6 @@
 # MCPVerse CLI
 
-A command-line interface tool for MCP.
+A command-line interface tool for interacting with MCP servers hosted on MCPVerse (https://mcpverse.dev).
 
 ## Installation
 
@@ -47,6 +47,8 @@ git clone https://github.com/village-chat/mcpverse-cli.git
 cd mcpverse-cli
 
 # Install in development mode
-pip install -e .
+python3 -m venv .venv
+source .venv/bin/activate
+./install.sh
 ```
 
