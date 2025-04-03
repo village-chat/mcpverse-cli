@@ -8,8 +8,9 @@ import threading
 import random
 import string
 import urllib.parse
-from pathlib import Path
 import requests
+from datetime import datetime, timezone
+from typing import Callable
 
 AUTH_FILE = os.path.expanduser("~/.mcpverse/auth.json")
 
@@ -17,7 +18,7 @@ MCPVERSE_API_URL = "https://api.mcpverse.dev"
 MCPVERSE_APP_URL = "https://mcpverse.dev"
 
 class AuthData:
-    def __init__(self, access_token, expires_at, refresh_token, id, email, first_name, last_name, display_name, locale):
+    def __init__(self, access_token: str, expires_at: datetime, refresh_token: str, id: str, email: str, first_name: str, last_name: str, display_name: str, locale: str):
         self.access_token = access_token
         self.expires_at = expires_at
         self.refresh_token = refresh_token
@@ -31,7 +32,7 @@ class AuthData:
     def to_dict(self) -> dict:
         return {
             "access_token": self.access_token,
-            "expires_at": self.expires_at,
+            "expires_at": self.expires_at.isoformat(),
             "refresh_token": self.refresh_token,
             "id": self.id,
             "email": self.email,
@@ -45,7 +46,7 @@ class AuthData:
     def from_dict(data: dict) -> 'AuthData':
         return AuthData(
             data['access_token'],
-            data['expires_at'],
+            datetime.fromisoformat(data['expires_at']),
             data['refresh_token'],
             data['id'],
             data['email'],
@@ -59,7 +60,7 @@ class AuthData:
     def from_token_data(token_data: dict) -> 'AuthData':
         return AuthData(
             token_data['access_token'],
-            token_data['expires_at'],
+            datetime.fromisoformat(token_data['expires_at']),
             token_data['refresh_token'],
             token_data['user']['id'],
             token_data['user']['email'],
@@ -92,21 +93,62 @@ def get_auth_info() -> AuthData | None:
         return None
 
 
-def is_authenticated() -> bool:
-    """Check if user is authenticated."""
+def refresh_tokens(refresh_token: str) -> AuthData | None:
+    """Refresh the access token using the refresh token."""
+    try:
+        response = requests.post(
+            f"{MCPVERSE_API_URL}/api/oauth/token",
+            json={
+                'refresh_token': refresh_token,
+                'grant_type': 'refresh_token'
+            }
+        )
+        response.raise_for_status()
+        token_data = response.json()
+        auth_data = AuthData.from_token_data(token_data)
+        save_auth_info(auth_data)
+        return auth_data
+    except Exception:
+        return None
+
+
+def get_valid_auth_info() -> AuthData | None:
+    """Get valid authentication info, refreshing if expired."""
     auth_data = get_auth_info()
-    return auth_data is not None
+    if not auth_data:
+        return None
+    
+    # Check if token is expired
+    now = datetime.now(tz=timezone.utc)
+    if now >= auth_data.expires_at:
+        # Token is expired, try to refresh
+        refreshed_auth = refresh_tokens(auth_data.refresh_token)
+        if not refreshed_auth:
+            remove_auth_info()  # Clear invalid auth data
+            return None
+        return refreshed_auth
+    
+    return auth_data
+
+
+def is_authenticated() -> bool:
+    """Check if user is authenticated with a valid token."""
+    return get_valid_auth_info() is not None
 
 
 def get_current_user_email() -> str:
     """Get the email of the currently authenticated user."""
-    auth_data = get_auth_info()
+    auth_data = get_valid_auth_info()
+    if not auth_data:
+        raise Exception("Not authenticated")
     return auth_data.email
 
 
 def get_access_token() -> str:
-    """Get the access token of the currently authenticated user."""
-    auth_data = get_auth_info()
+    """Get a valid access token of the currently authenticated user."""
+    auth_data = get_valid_auth_info()
+    if not auth_data:
+        raise Exception("Not authenticated")
     return auth_data.access_token
 
 
@@ -157,7 +199,8 @@ def browser_login() -> tuple[bool, str]:
                         f"{MCPVERSE_API_URL}/api/oauth/token",
                         json={
                             'code': code,
-                            'redirect_uri': redirect_uri
+                            'redirect_uri': redirect_uri,
+                            'grant_type': 'authorization_code'
                         }
                     )
                     response.raise_for_status()
